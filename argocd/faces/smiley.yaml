@@ -12,30 +12,6 @@ spec:
   - port: 80
     targetPort: http
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: smiley-canary
-  namespace: faces
-spec:
-  ports:
-    - port: 80
-      targetPort: http
-  selector:
-    service: smiley
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: smiley-stable
-  namespace: faces
-spec:
-  ports:
-    - port: 80
-      targetPort: http
-  selector:
-    service: smiley
----
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
@@ -49,41 +25,18 @@ spec:
       port: 80
   rules:
     - backendRefs:
-        - name: smiley-stable
-          group: ""
-          port: 80
-          kind: Service
-        - name: smiley-canary
+        - name: smiley
           group: ""
           port: 80
           kind: Service
 ---
 apiVersion: argoproj.io/v1alpha1
-kind: Rollout
+kind: Deployment
 metadata:
-  name: smiley-rollout
+  name: smiley
   namespace: faces
 spec:
   replicas: 1
-  strategy:
-    canary:
-      canaryService: smiley-canary
-      stableService: smiley-stable
-      trafficRouting:
-        plugins:
-          argoproj-labs/gatewayAPI:
-            httpRoute: smiley-route # our created httproute
-            namespace: faces
-      steps:
-        - setWeight: 30
-        - pause: {}
-        - setWeight: 40
-        - pause: { duration: 15 }
-        - setWeight: 60
-        - pause: { duration: 15 }
-        - setWeight: 80
-        - pause: { duration: 15 }
-  revisionHistoryLimit: 2
   selector:
     matchLabels:
       service: smiley

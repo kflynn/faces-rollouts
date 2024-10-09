@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: linkerd-viz
+  namespace: argocd
+spec:
+  destination:
+    namespace: linkerd
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: linkerd-viz
+    repoURL: https://helm.linkerd.io/edge
+    targetRevision: 2024.10.1

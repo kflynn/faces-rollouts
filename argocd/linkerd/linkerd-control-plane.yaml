@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: linkerd-control-plane
+  namespace: argocd
+spec:
+  destination:
+    namespace: linkerd
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: linkerd-control-plane
+    helm:
+      parameters:
+      - name: identity.externalCA
+        value: "true"
+      - name: identity.issuer.scheme
+        value: kubernetes.io/tls
+    repoURL: https://helm.linkerd.io/edge
+    targetRevision: 2024.10.1

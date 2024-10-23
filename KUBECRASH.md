@@ -86,6 +86,43 @@ argocd login 127.0.0.1:8080 \
   --insecure
 ```
 
+### Next install Argo Rollouts
+
+Argo Rollouts are a nice progressive delivery tool. We'll use it to show
+progressive delivery of the `color` workload, down in the Faces call graph.
+
+First, let's install Argo Rollouts. We'll start by creating its namespace and applying Rollouts itself:
+
+```bash
+kubectl create namespace argo-rollouts
+kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+```
+
+Next, since we want to use Gateway API to handle routing during progressive
+delivery, we need to apply some configuration. First is RBAC to allow Argo
+Rollouts to manipulate Gateway API HTTPRoutes.
+
+```bash
+kubectl apply -f argo-rollouts/rbac.yaml
+```
+
+After that is a ConfigMap that tells Argo Rollouts to use its Gateway API
+plugin for routing.
+
+```bash
+bat argo-rollouts/configmap.yaml
+kubectl apply -f argo-rollouts/configmap.yaml
+```
+
+Finally, we need to restart Rollouts to pick up the new configuration. (We
+need to install Rollouts before applying the configuration because the
+Rollouts RBAC relies on the ServiceAccount created when we install Rollouts!)
+
+```bash
+kubectl rollout restart  -n argo-rollouts deployment
+kubectl rollout status  -n argo-rollouts deployment
+```
+
 <!-- @wait_clear -->
 
 ## Add ArgoCD apps for Linkerd
@@ -150,12 +187,12 @@ Done.
 ### Add the `linkerd` applications
 
 ```bash
-bat argocd/linkerd-crds.yaml
-kubectl apply -f argocd/linkerd-crds.yaml
-bat argocd/linkerd-control-plane.yaml
-kubectl apply -f argocd/linkerd-control-plane.yaml
-bat argocd/linkerd-viz.yaml
-kubectl apply -f argocd/linkerd-viz.yaml
+bat argocd/linkerd/linkerd-crds.yaml
+kubectl apply -f argocd/linkerd/linkerd-crds.yaml
+bat argocd/linkerd/linkerd-control-plane.yaml
+kubectl apply -f argocd/linkerd/linkerd-control-plane.yaml
+bat argocd/linkerd/linkerd-viz.yaml
+kubectl apply -f argocd/linkerd/linkerd-viz.yaml
 ```
 
 And now we should see our three Linkerd applications in the Argo dashboard.
@@ -163,5 +200,23 @@ And now we should see our three Linkerd applications in the Argo dashboard.
 <!-- @browser_then_terminal -->
 
 ```bash
-argocd app sync linkerd
+argocd app sync linkerd-crds
+argocd app sync linkerd-control-plane
+argocd app sync linkerd-viz
 ```
+
+<!-- @wait_clear -->
+
+## Install the Faces demo
+
+Now that we have Linkerd running, we can install the Faces demo.
+
+```bash
+kubectl apply -f argocd/faces.yaml
+```
+
+We should now see the Faces app in Argo -- and it'll sync automagically.
+
+<!-- @browser_then_terminal -->
+
+

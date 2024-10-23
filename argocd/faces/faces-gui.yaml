@@ -5,7 +5,7 @@ metadata:
   name: faces-gui
   namespace: faces
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     service: faces-gui
   ports:

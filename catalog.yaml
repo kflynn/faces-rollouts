@@ -106,7 +106,7 @@ spec:
   definition: |
     openapi: "3.0.0"
     info:
-      version: 1.2.0
+      version: 1.5.0
       title: Face API
       license:
         name: Apache2
@@ -144,16 +144,45 @@ spec:
   definition: |
     openapi: "3.0.0"
     info:
-      version: 1.2.0
+      version: 1.5.0
       title: Smiley API
       license:
         name: Apache2
     servers:
       - url: http://smiley.faces/
     paths:
-      /:
+      /center:
         get:
-          summary: Retrieve a smiley for a Face cell
+          summary: Retrieve a smiley for a central Face cell
+          parameters:
+          - in: query
+            name: row
+            required: true
+            schema:
+              type: integer
+            description: The row number of the desired cell, starting from 0
+          - in: query
+            name: col
+            required: true
+            schema:
+              type: integer
+            description: The column number of the desired cell, starting from 0
+      /edge:
+        get:
+          summary: Retrieve a smiley for an edge Face cell
+          parameters:
+          - in: query
+            name: row
+            required: true
+            schema:
+              type: integer
+            description: The row number of the desired cell, starting from 0
+          - in: query
+            name: col
+            required: true
+            schema:
+              type: integer
+            description: The column number of the desired cell, starting from 0
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
@@ -169,13 +198,42 @@ spec:
   definition: |
     openapi: "3.0.0"
     info:
-      version: 1.2.0
+      version: 1.5.0
       title: Color API
       license:
         name: Apache2
     servers:
       - url: http://color.faces/
     paths:
-      /:
+      /center:
         get:
-          summary: Retrieve a color for a Face cell
+          summary: Retrieve a color for a central Face cell
+          parameters:
+          - in: query
+            name: row
+            required: true
+            schema:
+              type: integer
+            description: The row number of the desired cell, starting from 0
+          - in: query
+            name: col
+            required: true
+            schema:
+              type: integer
+            description: The column number of the desired cell, starting from 0
+      /edge:
+        get:
+          summary: Retrieve a color for an edge Face cell
+          parameters:
+          - in: query
+            name: row
+            required: true
+            schema:
+              type: integer
+            description: The row number of the desired cell, starting from 0
+          - in: query
+            name: col
+            required: true
+            schema:
+              type: integer
+            description: The column number of the desired cell, starting from 0

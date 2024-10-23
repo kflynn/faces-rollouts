@@ -12,30 +12,6 @@ spec:
   - port: 80
     targetPort: http
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: color-canary
-  namespace: faces
-spec:
-  ports:
-    - port: 80
-      targetPort: http
-  selector:
-    service: color
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: color-stable
-  namespace: faces
-spec:
-  ports:
-    - port: 80
-      targetPort: http
-  selector:
-    service: color
----
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
@@ -49,41 +25,18 @@ spec:
       port: 80
   rules:
     - backendRefs:
-        - name: color-stable
-          group: ""
-          port: 80
-          kind: Service
-        - name: color-canary
+        - name: color
           group: ""
           port: 80
           kind: Service
 ---
 apiVersion: argoproj.io/v1alpha1
-kind: Rollout
+kind: Deployment
 metadata:
-  name: color-rollout
+  name: color
   namespace: faces
 spec:
   replicas: 1
-  strategy:
-    canary:
-      canaryService: color-canary
-      stableService: color-stable
-      trafficRouting:
-        plugins:
-          argoproj-labs/gatewayAPI:
-            httpRoute: color-route # our created httproute
-            namespace: faces
-      steps:
-        - setWeight: 30
-        - pause: {}
-        - setWeight: 40
-        - pause: { duration: 15 }
-        - setWeight: 60
-        - pause: { duration: 15 }
-        - setWeight: 80
-        - pause: { duration: 15 }
-  revisionHistoryLimit: 2
   selector:
     matchLabels:
       service: color

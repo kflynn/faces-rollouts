@@ -11,7 +11,7 @@ metadata:
   namespace: argocd
 spec:
   source:
-    path: argocd/faces
+    path: faces
     repoURL: 'https://github.com/kflynn/faces-rollouts.git'
     targetRevision: main
   destination:

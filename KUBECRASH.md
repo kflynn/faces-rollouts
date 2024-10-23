@@ -75,7 +75,8 @@ demo purposes, we will not be showing this.
 
 <!-- @browser_then_terminal -->
 
-We'll be using the `argocd` CLI for our next steps, which means that we need to authenticate the CLI:
+We'll be using the `argocd` CLI for our next steps, which means that we need
+to authenticate the CLI:
 
 ```bash
 password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
@@ -125,18 +126,15 @@ kubectl rollout status  -n argo-rollouts deployment
 
 <!-- @wait_clear -->
 
-## Add ArgoCD apps for Linkerd
-
-We have to add three ArgoCD applications for Linkerd: one for Linkerd's CRDs,
-one for Linkerd itself, and one for Linkerd Viz. But first: certificates.
-
-### Generate certificates for Linkerd
+## Certificates for Linkerd
 
 In the Real World, you'd do this by having ArgoCD install cert-manager for
-you, but we'll just do it by hand for the moment. Start by creating the
-certificates using `step`:
+you. For this demo, though, we'll set up the cluster as if we were using
+cert-manager or the like, but we'll do it by hand using `step` and `kubectl`.
 
-Generate the trust anchor certificate:
+First, we need to generate the _trust anchor certificate_ for Linkerd. This is
+the thing that serves as the root of trust for Linkerd; everything else
+derives from it.
 
 ```bash
 #@immed
@@ -150,7 +148,9 @@ step certificate create \
      certs/ca.crt certs/ca.key
 ```
 
-Generate the identity issuer certificate and key:
+Next we'll generate Linkerd's _identity issuer certificate_, which must be
+signed by the trust anchor. Linkerd uses this certificate to the unique
+identity for every workload in the mesh.
 
 ```bash
 #@immed
@@ -163,15 +163,40 @@ step certificate create \
      certs/issuer.crt certs/issuer.key
 ```
 
-<!-- @wait_clear -->
+Given these certificates, we can now set up the cluster with them. First
+things first: we need to put these resources in the `linkerd` namespace, so
+let's create that namespace:
 
-```bash,run
+```bash
 kubectl create namespace linkerd
+```
 
+OK. We'll start by writing the trust anchor's public half into our _trust
+anchor bundle_, which is a ConfigMap. Linkerd will use the certificate(s) in
+the trust anchor bundle to verify signatures for workload identities. You can
+have multiple certificates in the bundle (you need that when rotating the
+trust anchor, for example), but for now we just have the one.
+
+Note that we do _not_ include the trust anchor's private key in the bundle!
+This is why it's safe for it to be a ConfigMap.
+
+```bash
 kubectl create configmap \
         linkerd-identity-trust-roots -n linkerd \
         --from-file='ca-bundle.crt'=certs/ca.crt
+```
 
+After that, we'll create a Secret for the identity issuer certificate. This
+Secret is used by the Linkerd control plane to sign identity certificates for
+workloads, so it must include the issuer's private key, which is why it must
+be a Secret.
+
+This bit looks a little odd because we want three elements in this Secret, so
+we have to use `kubectl create secret generic` instead of `kubectl create
+secret tls` -- even though we're explicitly setting the type to
+`kubernetes.io/tls`.
+
+```bash
 kubectl create secret generic \
         linkerd-identity-issuer -n linkerd \
         --type=kubernetes.io/tls \
@@ -180,24 +205,34 @@ kubectl create secret generic \
         --from-file=tls.key=certs/issuer.key
 ```
 
-Done.
+Done -- now we can install Linkerd!
 
-<!-- @wait -->
+<!-- @wait_clear -->
 
-### Add the `linkerd` applications
+## Add ArgoCD apps for Linkerd
+
+We have to add three ArgoCD applications for Linkerd: one for Linkerd's CRDs,
+one for Linkerd itself, and one for Linkerd Viz. The ArgoCD files for these
+all live in the `infrastructure/linkerd` directory -- this might not be
+completely standard for ArgoCD, but it's a good way to keep all the Linkerd
+stuff together.
 
 ```bash
-bat argocd/linkerd/linkerd-crds.yaml
-kubectl apply -f argocd/linkerd/linkerd-crds.yaml
-bat argocd/linkerd/linkerd-control-plane.yaml
-kubectl apply -f argocd/linkerd/linkerd-control-plane.yaml
-bat argocd/linkerd/linkerd-viz.yaml
-kubectl apply -f argocd/linkerd/linkerd-viz.yaml
+bat infrastructure/linkerd/linkerd-crds.yaml
+kubectl apply -f infrastructure/linkerd/linkerd-crds.yaml
+bat infrastructure/linkerd/linkerd-control-plane.yaml
+kubectl apply -f infrastructure/linkerd/linkerd-control-plane.yaml
+bat infrastructure/linkerd/linkerd-viz.yaml
+kubectl apply -f infrastructure/linkerd/linkerd-viz.yaml
 ```
 
 And now we should see our three Linkerd applications in the Argo dashboard.
 
 <!-- @browser_then_terminal -->
+
+Next up, sync up all the ArgoCD applications for Linkerd. You can do this from
+the dashboard or from the CLI (in either case, you might need to sync multiple
+times to get everything ready).
 
 ```bash
 argocd app sync linkerd-crds
@@ -207,16 +242,31 @@ argocd app sync linkerd-viz
 
 <!-- @wait_clear -->
 
-## Install the Faces demo
+## Add ArgoCD apps for the Faces demo
 
-Now that we have Linkerd running, we can install the Faces demo.
+Now that we have Linkerd running, we can use ArgoCD to install the Faces demo.
+There's just a single ArgoCD application for this, in the `application`
+directory.
 
 ```bash
-kubectl apply -f argocd/faces.yaml
+bat application/faces.yaml
 ```
 
-We should now see the Faces app in Argo -- and it'll sync automagically.
+You'll note that where the `infrastructure` applications just pointed to Helm
+charts, the `faces` application points to a path in a GitHub repo. This allows
+ArgoCD to implement GitOps, watching the repo for changes and automatically
+syncing the application when it sees them. In this case, we're using a
+directory in the same repo that contains our infrastructure -- in most
+real-world situations, though, the applications and the infrastructure would
+both be using GitOps, and they wouldn't be in the same repo at all.
+
+Let's go ahead and get Faces set up:
+
+```bash
+kubectl apply -f application/faces.yaml
+```
+
+We should now see the Faces app in Argo -- and it'll sync automagically. Once
+the sync is done, we can check the Faces app in the browser!
 
 <!-- @browser_then_terminal -->
-
-
